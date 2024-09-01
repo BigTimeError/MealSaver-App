@@ -1,5 +1,7 @@
 package com.example.mealideas
 
+import android.annotation.SuppressLint
+import android.app.Application
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
@@ -50,8 +52,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -70,6 +74,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.liveData
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -87,6 +96,8 @@ import androidx.room.Database
 import androidx.room.Delete
 import androidx.room.OnConflictStrategy
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
@@ -99,13 +110,45 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+class MyApplication : Application() {
+    lateinit var db: AppDatabase
+
+    val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Drop the old table
+            database.execSQL("DROP TABLE IF EXISTS stats")
+
+            // Create the new table with the correct schema
+            database.execSQL(
+                """
+            CREATE TABLE stats (
+                avgDiff TEXT NOT NULL DEFAULT 'undefined',
+                avgTaste TEXT NOT NULL DEFAULT 'undefined',
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                profileUri TEXT,
+                username TEXT NOT NULL DEFAULT 'undefined'
+            )
+            """
+            )
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        db = Room.databaseBuilder(applicationContext, AppDatabase::class.java, "dishes-db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
+    }
+}
+
+
 @Composable
 fun MyApp() {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "greeting") {
-        composable("greeting") { Greeting(navController) }
-        composable("profile") { Profile(navController) }
-        composable("recipes") { Recipes(navController) }
+        composable("greeting") {Greeting(navController)}
+        composable("profile") {Profile(navController)}
+        composable("recipes") {Recipes(navController)}
         composable("cookingIdeas") {CookingIdeas(navController)}
 
     }
@@ -114,7 +157,9 @@ fun MyApp() {
 
 
 @Composable
-fun Greeting(navController: NavHostController) {
+fun Greeting(
+    navController: NavHostController,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -235,7 +280,9 @@ fun Welcome_display() {
 }
 
 @Composable
-fun Profile(navController: NavHostController) {
+fun Profile(
+    navController: NavHostController,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -283,15 +330,42 @@ fun Top_back(navController: NavHostController) {
 
 @Composable
 fun MyStats(){
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val app = context.applicationContext as MyApplication
+    val db = app.db // Access the database from MyApplication
+    val dishDao = db.dishDao()
+    val statDao = db.statDao()
+
+    val viewModelFactory = DishViewModelFactory(dishDao, statDao)
+    val viewModel: DishViewModel = viewModel(factory = viewModelFactory)
+
+    var avgDiff by remember { mutableFloatStateOf(0f) }
+    var avgTaste by remember { mutableFloatStateOf(0f) }
+
+    // Durchschnittswerte abrufen
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            avgDiff = viewModel.getAvgDiff()
+            avgTaste = viewModel.getAvgTaste()
+        }
+    }
+
+    // Formatieren der Werte auf zwei Dezimalstellen
+    val formattedAvgDiff = String.format("%.2f", avgDiff)
+    val formattedAvgTaste = String.format("%.2f", avgTaste)
+    val dishCount by viewModel.getDishCountAsString().observeAsState("0")
+
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        StatusItem(number = "69", status = "Meals", isActive = true, modifier = Modifier.weight(2f))
-        StatusItem(number = "3.5", status = "Difficulty", isActive = false, modifier = Modifier.weight(2f))
-        StatusItem(number = "2.5", status = "Taste", isActive = false, modifier = Modifier.weight(2f))
+        StatusItem(number = dishCount, status = "Meals", isActive = true, modifier = Modifier.weight(2f))
+        StatusItem(number = formattedAvgDiff, status = "Difficulty", isActive = false, modifier = Modifier.weight(2f))
+        StatusItem(number = formattedAvgTaste, status = "Taste", isActive = false, modifier = Modifier.weight(2f))
     }
 }
 
@@ -376,11 +450,15 @@ interface DishDao {
 
     @Delete
     suspend fun deleteDish(dish: Dish)
-}
 
-@Database(entities = [Dish::class], version = 1)
-abstract class AppDatabase : RoomDatabase() {
-    abstract fun dishDao(): DishDao
+    @Query("SELECT AVG(difficulty) FROM dishes")
+    suspend fun getAverageDifficulty(): Float?
+
+    @Query("SELECT AVG(taste) FROM dishes")
+    suspend fun getAverageTaste(): Float?
+
+    @Query("SELECT COUNT(*) FROM dishes")
+    suspend fun getDishCount(): Int
 }
 
 @Composable
@@ -612,19 +690,23 @@ fun DishItem(dish: Dish, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun Recipes(navController: NavHostController) {
+fun Recipes(
+    navController: NavHostController,
+) {
     val context = LocalContext.current
-    val db = remember {
-        Room.databaseBuilder(context, AppDatabase::class.java, "dishes-db").build()
-    }
+    val app = context.applicationContext as MyApplication
+    val db = app.db // Access the database from MyApplication
+    val statDao = db.statDao()
     val dishDao = db.dishDao()
-
-    // Beobachte LiveData
-    val dishes by dishDao.getAllDishes().observeAsState(emptyList())
+    val viewModelFactory = DishViewModelFactory(dishDao, statDao)
+    val viewModel: DishViewModel = viewModel(factory = viewModelFactory)
     val coroutineScope = rememberCoroutineScope()
     var isAddDishFormVisible by remember { mutableStateOf(false) }
     var selectedDish by remember { mutableStateOf<Dish?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val dishes by viewModel.dishes.observeAsState(emptyList())
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -665,10 +747,8 @@ fun Recipes(navController: NavHostController) {
             ) {
                 AddDishForm(
                     onAddDish = { newDish ->
-                        coroutineScope.launch {
-                            dishDao.insertDish(newDish)
-                            isAddDishFormVisible = false
-                        }
+                        viewModel.addDish(newDish)
+                        isAddDishFormVisible = false
                     },
                     onDismiss = { isAddDishFormVisible = false }
                 )
@@ -703,7 +783,7 @@ fun Recipes(navController: NavHostController) {
                                 context.contentResolver.delete(Uri.parse(uri), null, null)
                             }
                             // Gericht aus der Datenbank löschen
-                            dishDao.deleteDish(dish)
+                            viewModel.deleteDish(dish)
                             selectedDish = null
                         }
                         showDeleteDialog = false
@@ -878,9 +958,8 @@ fun ShowDeleteConfirmationDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 @Composable
 fun CookingIdeas (navController: NavHostController) {
     val context = LocalContext.current
-    val db = remember {
-        Room.databaseBuilder(context, AppDatabase::class.java, "dishes-db").build()
-    }
+    val app = context.applicationContext as MyApplication
+    val db = app.db // Access the database from MyApplication
     val dishDao = db.dishDao()
     val dishes by dishDao.getAllDishes().observeAsState(emptyList())
     val randomDish = remember { mutableStateOf(getRandomDish(dishes)) }
@@ -1064,13 +1143,116 @@ fun DishDetailView(dish: Dish, onDismiss: () -> Unit) {
     }
 }
 
-@Preview(showBackground = true)
+/*
+//Stats/Profile Settings Container
+ */
+
+@Entity(tableName = "stats")
+data class Stats(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val username: String ="Current User",
+    val profileUri: String? = null, // Speichere die URI als String
+    val avgDiff: String = "0",
+    val avgTaste: String = "0",
+)
+
+@Dao
+interface StatDao {
+    @Query("SELECT * FROM stats LIMIT 1") // Hole nur einen Datensatz
+    fun getAllStats(): LiveData<Stats>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertStat(stats: Stats)
+
+    @Delete
+    suspend fun deleteStat(stats: Stats)
+}
+
+@Database(entities = [Stats::class, Dish::class], version = 2)
+//Version is 2
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun statDao(): StatDao
+    abstract fun dishDao(): DishDao
+}
+
+class DishViewModelFactory(
+    private val dishDao: DishDao,
+    private val statDao: StatDao
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(DishViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return DishViewModel(dishDao, statDao) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+class DishViewModel(
+    private val dishDao: DishDao,
+    private val statDao: StatDao
+) : ViewModel() {
+
+    val dishes: LiveData<List<Dish>> = dishDao.getAllDishes()
+
+    suspend fun getAvgDiff(): Float {
+        return dishDao.getAverageDifficulty() ?: 0f
+    }
+
+    suspend fun getAvgTaste(): Float {
+        return dishDao.getAverageTaste() ?: 0f
+    }
+
+    fun addDish(dish: Dish) {
+        viewModelScope.launch {
+            dishDao.insertDish(dish)
+            updateAverageValues()
+        }
+    }
+
+    fun deleteDish(dish: Dish) {
+        viewModelScope.launch {
+            dishDao.deleteDish(dish)
+            updateAverageValues()
+        }
+    }
+
+    // Funktion zum Abrufen der Anzahl der Gerichte als String
+    fun getDishCountAsString(): LiveData<String> {
+        return liveData {
+            val count = dishDao.getDishCount()
+            emit(count.toString())
+        }
+    }
+
+    private suspend fun updateAverageValues() {
+        val avgDiff = dishDao.getAverageDifficulty() ?: 0f
+        val avgTaste = dishDao.getAverageTaste() ?: 0f
+
+        // Formatieren der Werte auf zwei Dezimalstellen
+        val formattedAvgDiff = String.format("%.2f", avgDiff)
+        val formattedAvgTaste = String.format("%.2f", avgTaste)
+
+        val newStats = Stats(
+            id = 1, // assuming only one row
+            username = "Current User", // ggf. dynamisch anpassen
+            profileUri = null,
+            avgDiff = formattedAvgDiff,
+            avgTaste = formattedAvgTaste
+        )
+
+        statDao.insertStat(newStats)
+    }
+
+}
+
+/*@Preview(showBackground = true)
 @Composable
 fun PreviewRandomScreen() {
     val navController = rememberNavController()
 
     CookingIdeas(navController)
-}
+}*/
 
 /*@Preview(showBackground = true)
 @Composable

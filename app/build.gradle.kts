@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android) version "2.0.20"
     id("com.google.devtools.ksp") version "2.0.20-1.0.24"
     alias(libs.plugins.compose.compiler)
+    id("androidx.room") version "2.6.1"
 }
 
 android {
@@ -22,7 +23,9 @@ android {
             useSupportLibrary = true
         }
     }
-
+    room {
+        schemaDirectory("$projectDir/schemas")
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -51,6 +54,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose) //neu
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
