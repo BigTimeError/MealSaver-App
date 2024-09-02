@@ -106,7 +106,6 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.Shapes
 
 
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
