@@ -11,12 +11,12 @@ import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,13 +99,19 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlin.random.Random
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.Typography
+import androidx.compose.material3.Shapes
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            MyApp()
+                MyApp()
         }
     }
 }
@@ -142,6 +148,7 @@ class MyApplication : Application() {
 }
 
 
+
 @Composable
 fun MyApp() {
     val navController = rememberNavController()
@@ -150,7 +157,8 @@ fun MyApp() {
         composable("profile") {Profile(navController)}
         composable("recipes") {Recipes(navController)}
         composable("cookingIdeas") {CookingIdeas(navController)}
-
+        composable("change_username"){ChangeUsernameScreen(navController)}
+        composable("settings"){Settings(navController)}
     }
 }
 
@@ -268,6 +276,19 @@ fun Menu_display(navController: NavHostController) {
 
 @Composable
 fun Welcome_display() {
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val app = context.applicationContext as MyApplication
+    val db = app.db // Access the database from MyApplication
+    val statDao = db.statDao()
+    var username by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            username= statDao.getUser()?.username.toString() // Fetch username here
+        }
+    }
+
     Column (
         modifier = Modifier
             .fillMaxWidth()
@@ -275,7 +296,7 @@ fun Welcome_display() {
     ){
             Text(text = "Welcome", color = Color.Gray, fontSize = 20.sp)
             //User Name Variable
-            Text(text = "Daniel Rauch", color = Color.Black, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(text = username, color = Color.Black, fontSize = 28.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -283,6 +304,19 @@ fun Welcome_display() {
 fun Profile(
     navController: NavHostController,
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val app = context.applicationContext as MyApplication
+    val db = app.db // Access the database from MyApplication
+    val statDao = db.statDao()
+    var username by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            username= statDao.getUser()?.username.toString() // Fetch username here
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -302,7 +336,7 @@ fun Profile(
                 .clickable { navController.navigate("profile") }
         )
         Spacer(modifier = Modifier.height(20.dp))
-        Text(text = "Daniel Rauch", color = Color.Black, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text(text = username, color = Color.Black, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(20.dp))
         MyStats()
         Spacer(modifier = Modifier.height(20.dp))
@@ -328,6 +362,7 @@ fun Top_back(navController: NavHostController) {
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun MyStats(){
     val coroutineScope = rememberCoroutineScope()
@@ -410,6 +445,14 @@ fun StatusItem(number: String, status: String, isActive: Boolean, modifier: Modi
 
 @Composable
 fun ProfileOptions(navController : NavHostController){
+    val context = LocalContext.current
+    val app = context.applicationContext as MyApplication
+    val db = app.db // Access the database from MyApplication
+    val statDao = db.statDao()
+    val dishDao = db.dishDao()
+    val viewModelFactory = DishViewModelFactory(dishDao, statDao)
+    val viewModel: DishViewModel = viewModel(factory = viewModelFactory)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -418,12 +461,98 @@ fun ProfileOptions(navController : NavHostController){
             .padding(16.dp)
     ) {
         Spacer(modifier = Modifier.height(8.dp))
-        Menu_Row(navController, "username", imageResId = R.drawable.image_placeholder)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Image(
+                painter = painterResource(R.drawable.profile_placeholder),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(70.dp)
+                    .clip(CircleShape)
+            )
+            Text(
+                text = "Change Username",
+                color = Color.Black,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Image(
+                painter = painterResource(id = R.drawable.arrow_right),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { navController.navigate("change_username") }
+            )
+
+        }
         Spacer(modifier = Modifier.height(10.dp))
         Menu_Row(navController, "settings", imageResId = R.drawable.image_placeholder)
         Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+
+@Composable
+fun ChangeUsernameScreen(
+    navController: NavHostController,
+) {
+    val context = LocalContext.current
+    val app = context.applicationContext as MyApplication
+    val db = app.db // Access the database from MyApplication
+    val statDao = db.statDao()
+    val dishDao = db.dishDao()
+    val viewModelFactory = DishViewModelFactory(dishDao, statDao)
+    val viewModel: DishViewModel = viewModel(factory = viewModelFactory)
+    var username by remember { mutableStateOf(viewModel._username.value ?: "") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .background(Color.White, shape = RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Username") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Button(
+                onClick = {
+                    viewModel.updateUsername(username) { success ->
+                        if (success) {
+                            navController.popBackStack() // Zurück zum vorherigen Screen
+                        } else {
+                            // Handle error
+                        }
+                    }
+                }
+            ) {
+                Text("Save")
+            }
+            Button(
+                onClick = { navController.popBackStack() } // Abbrechen und zurückkehren
+            ) {
+                Text("Cancel")
+            }
+        }
     }
 }
+
+
 
 /*
     This section is for the Meals Container
@@ -615,30 +744,12 @@ fun saveImageToMediaStore(context: Context, bitmap: Bitmap, imageName: String): 
 
 @Composable
 fun PickImageFromGallery(onImageUriSelected: (Uri?) -> Unit) {
-    val context = LocalContext.current
     val getContent = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         onImageUriSelected(uri)
     }
 
     Button(onClick = { getContent.launch("image/*") }) {
         Text("Bild auswählen")
-    }
-}
-
-@Composable
-fun DishList(dishes: List<Dish>, selectedDish: Dish?, onDishClick: (Dish) -> Unit) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2), // Zwei Spalten
-        modifier = Modifier.padding(8.dp),
-        contentPadding = PaddingValues(8.dp)
-    ) {
-        items(dishes) { dish ->
-            DishItem(
-                dish = dish,
-                isSelected = dish == selectedDish, // Übergebe den isSelected-Status
-                onClick = { onDishClick(dish) }
-            )
-        }
     }
 }
 
@@ -1166,6 +1277,9 @@ interface StatDao {
 
     @Delete
     suspend fun deleteStat(stats: Stats)
+
+    @Query("SELECT * FROM stats LIMIT 1")
+    suspend fun getUser(): Stats?
 }
 
 @Database(entities = [Stats::class, Dish::class], version = 2)
@@ -1225,6 +1339,7 @@ class DishViewModel(
         }
     }
 
+    @SuppressLint("DefaultLocale")
     private suspend fun updateAverageValues() {
         val avgDiff = dishDao.getAverageDifficulty() ?: 0f
         val avgTaste = dishDao.getAverageTaste() ?: 0f
@@ -1244,7 +1359,41 @@ class DishViewModel(
         statDao.insertStat(newStats)
     }
 
+    val _username = mutableStateOf<String?>(null)
+
+    init {
+        viewModelScope.launch {
+            _username.value = statDao.getUser()?.username
+        }
+    }
+
+    fun updateUsername(newUsername: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val currentUser = statDao.getUser()
+                if (currentUser != null) {
+                    val updatedUser = currentUser.copy(username = newUsername)
+                    statDao.insertStat(updatedUser) // Use insertStat to update (replace)
+                    _username.value = newUsername
+                    onResult(true)
+                } else {
+                    // Handle case where user is not found
+                    onResult(false)
+                }
+            } catch (e: Exception) {
+                // Handle exception
+                onResult(false)
+            }
+        }
+    }
+
 }
+
+@Composable
+fun Settings(navController: NavHostController){
+    Text("Baustell")
+}
+
 
 /*@Preview(showBackground = true)
 @Composable
