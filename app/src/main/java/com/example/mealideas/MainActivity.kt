@@ -16,7 +16,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,11 +98,6 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlin.random.Random
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.material3.Typography
-import androidx.compose.material3.Shapes
 
 
 class MainActivity : ComponentActivity() {
@@ -258,12 +252,12 @@ fun Menu_display(navController: NavHostController) {
         horizontalArrangement = Arrangement.SpaceBetween
     ){
         Image(
-            painter = painterResource(id = R.drawable.menu_dark),
+            painter = painterResource(id = R.drawable.menu_icon),
             contentDescription = null,
             modifier = Modifier.size(40.dp)
         )
         Image(
-            painter = painterResource(id = R.drawable.profile_placeholder),
+            painter = painterResource(id = R.drawable.chef_icon),
             contentDescription = null,
             modifier = Modifier
                 .size(40.dp)
@@ -327,7 +321,7 @@ fun Profile(
         Top_back(navController)
         Spacer(modifier = Modifier.height(50.dp))
         Image(
-            painter = painterResource(id = R.drawable.profile_placeholder),
+            painter = painterResource(id = R.drawable.chef_icon),
             contentDescription = null,
             modifier = Modifier
                 .size(150.dp)
@@ -377,7 +371,7 @@ fun MyStats(){
     var avgDiff by remember { mutableFloatStateOf(0f) }
     var avgTaste by remember { mutableFloatStateOf(0f) }
 
-    // Durchschnittswerte abrufen
+    // Get average difficulty and taste from the database
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             avgDiff = viewModel.getAvgDiff()
@@ -385,7 +379,7 @@ fun MyStats(){
         }
     }
 
-    // Formatieren der Werte auf zwei Dezimalstellen
+    // format the values
     val formattedAvgDiff = String.format("%.2f", avgDiff)
     val formattedAvgTaste = String.format("%.2f", avgTaste)
     val dishCount by viewModel.getDishCountAsString().observeAsState("0")
@@ -468,7 +462,7 @@ fun ProfileOptions(navController : NavHostController){
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Image(
-                painter = painterResource(R.drawable.profile_placeholder),
+                painter = painterResource(R.drawable.chef_icon),
                 contentDescription = null,
                 modifier = Modifier
                     .size(70.dp)
@@ -491,7 +485,7 @@ fun ProfileOptions(navController : NavHostController){
 
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Menu_Row(navController, "settings", imageResId = R.drawable.image_placeholder)
+        Menu_Row(navController, "settings", imageResId = R.drawable.settings)
         Spacer(modifier = Modifier.height(8.dp))
         }
     }
@@ -533,7 +527,7 @@ fun ChangeUsernameScreen(
                 onClick = {
                     viewModel.updateUsername(username) { success ->
                         if (success) {
-                            navController.popBackStack() // Zurück zum vorherigen Screen
+                            navController.popBackStack() // go back to previous screen
                         } else {
                             // Handle error
                         }
@@ -543,7 +537,7 @@ fun ChangeUsernameScreen(
                 Text("Save")
             }
             Button(
-                onClick = { navController.popBackStack() } // Abbrechen und zurückkehren
+                onClick = { navController.popBackStack() } // Cancel and go back
             ) {
                 Text("Cancel")
             }
@@ -562,7 +556,7 @@ fun ChangeUsernameScreen(
 data class Dish(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val imageUri: String?, // Speichere die URI als String
+    val imageUri: String?, // save uri as string
     val difficulty: String,
     val taste: String,
     val instructions: String
@@ -594,12 +588,12 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
-    var bitmap by remember { mutableStateOf<Bitmap?>(null) }  // Statt URI, verwende Bitmap
+    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var difficulty by remember { mutableStateOf("0") }
     var taste by remember { mutableStateOf("0") }
     var instructions by remember { mutableStateOf("") }
 
-    // Benutzeroberfläche für das Formular
+    // User Interface for adding dish
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -609,7 +603,7 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
         TextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Gerichtname") },
+            label = { Text("Meal name") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -622,7 +616,7 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
                     difficulty = value
                 }
             },
-            label = { Text("Schwierigkeitsgrad (0-5)") },
+            label = { Text("Difficultly (0-5)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
@@ -636,7 +630,7 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
                     taste = value
                 }
             },
-            label = { Text("Geschmack (0-5)") },
+            label = { Text("Taste (0-5)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
@@ -646,7 +640,7 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
         TextField(
             value = instructions,
             onValueChange = { instructions = it },
-            label = { Text("Anleitung") },
+            label = { Text("Instructions") },
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 100.dp)
@@ -656,7 +650,7 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
             ),
             keyboardActions = KeyboardActions(
                 onDone = {
-                    // Keine spezielle Aktion hier, um Schließen zu verhindern
+                    // no specific action needed
                 }
             ),
             singleLine = false
@@ -664,14 +658,14 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Bildauswahl Button
+        // Choose picture Button
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             PickImageFromGallery { uri ->
                 uri?.let {
-                    // Lade das Bitmap von der URI
+                    // Load uri into bitmap
                     bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
                 }
             }
@@ -684,14 +678,14 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
                             onAddDish(
                                 Dish(
                                     name = name,
-                                    imageUri = imageUri.toString(),  // Speichere die URI als String
+                                    imageUri = imageUri.toString(),  // save uri as string
                                     difficulty = difficulty,
                                     taste = taste,
                                     instructions = instructions
                                 )
                             )
                         }
-                        // Zurücksetzen der Felder nach dem Hinzufügen
+                        // Revert back to default after adding the dish
                         name = ""
                         bitmap = null
                         difficulty = "0"
@@ -701,7 +695,7 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
                     }
                 }
             }) {
-                Text("Hinzufügen")
+                Text("Add Dish")
             }
         }
 
@@ -710,7 +704,7 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
             horizontalArrangement = Arrangement.Center
         ) {
             Button(onClick = onDismiss) {
-                Text("Abbrechen")
+                Text("Cancel")
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -718,18 +712,18 @@ fun AddDishForm(onAddDish: (Dish) -> Unit, onDismiss: () -> Unit) {
 }
 
 fun saveImageToMediaStore(context: Context, bitmap: Bitmap, imageName: String): Uri? {
-    // Bereite die Informationen vor, die wir speichern wollen
+    // initialise content values
     val contentValues = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, "$imageName.jpg")  // Name der Datei
-        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")         // Dateityp
-        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/YourAppName")  // Speicherort
+        put(MediaStore.Images.Media.DISPLAY_NAME, "$imageName.jpg")  // Data name
+        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")         // Data type
+        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/YourAppName")  // Save path
     }
 
-    // ContentResolver zum Einfügen der Daten verwenden
+    // ContentResolver to save image
     val resolver = context.contentResolver
     val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
 
-    // Öffne den Ausgabestream und speichere das Bild
+    // Open output stream
     uri?.let {
         resolver.openOutputStream(it).use { outputStream ->
             if (outputStream != null) {
@@ -748,7 +742,7 @@ fun PickImageFromGallery(onImageUriSelected: (Uri?) -> Unit) {
     }
 
     Button(onClick = { getContent.launch("image/*") }) {
-        Text("Bild auswählen")
+        Text("Choose picture")
     }
 }
 
@@ -756,7 +750,7 @@ fun PickImageFromGallery(onImageUriSelected: (Uri?) -> Unit) {
 fun DishItem(dish: Dish, isSelected: Boolean, onClick: () -> Unit) {
     val imagePainter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(LocalContext.current)
-            .data(dish.imageUri)  // Nutze die gespeicherte URI
+            .data(dish.imageUri)  // Use saved uri
             .crossfade(true)
             .placeholder(R.drawable.image_placeholder)
             .error(R.drawable.image_placeholder)
@@ -888,11 +882,11 @@ fun Recipes(
                 onConfirm = {
                     coroutineScope.launch {
                         selectedDish?.let { dish ->
-                            // Bild aus dem MediaStore löschen
+                            // Delete image from MediaStore
                             dish.imageUri?.let { uri ->
                                 context.contentResolver.delete(Uri.parse(uri), null, null)
                             }
-                            // Gericht aus der Datenbank löschen
+                            // Delete Dish from database
                             viewModel.deleteDish(dish)
                             selectedDish = null
                         }
@@ -927,13 +921,13 @@ fun DishDetailOverlay(dish: Dish, onDismiss: () -> Unit, onDelete: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.5f))
-            .clickable { onDismiss() }, // Schließt das Overlay, wenn der Hintergrund geklickt wird
+            .clickable { onDismiss() }, // Closes overlay when clicked outside
         contentAlignment = Alignment.Center
     ) {
-        // Container für den Detailinhalt
+        // Container for Dish Details
         Box(
             modifier = Modifier
-                .wrapContentSize() // Auf die Größe des Inhalts begrenzen
+                .wrapContentSize()
                 .fillMaxWidth()
                 .background(Color.White)
                 .clip(RoundedCornerShape(16.dp))
@@ -942,15 +936,15 @@ fun DishDetailOverlay(dish: Dish, onDismiss: () -> Unit, onDelete: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 4.dp) // Padding oben hinzufügen, um den Schließen-Button nicht zu überlappen
+                    .padding(top = 4.dp)
             ) {
-                // Container für Schließen- und Löschen-Button
+                // Container for Close and Delete Buttons
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
                 ) {
-                    // Löschen-Button
+                    // Delete-Button
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier
@@ -960,7 +954,7 @@ fun DishDetailOverlay(dish: Dish, onDismiss: () -> Unit, onDelete: () -> Unit) {
                         Icon(imageVector = Icons.Filled.Delete, contentDescription = "Delete")
                     }
 
-                    // Schließen-Button
+                    // Close-Button
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
@@ -971,7 +965,7 @@ fun DishDetailOverlay(dish: Dish, onDismiss: () -> Unit, onDelete: () -> Unit) {
                     }
                 }
 
-                // Bild
+                // Image
                 val imageRequest = ImageRequest.Builder(LocalContext.current)
                     .data(dish.imageUri)
                     .crossfade(true)
@@ -994,7 +988,7 @@ fun DishDetailOverlay(dish: Dish, onDismiss: () -> Unit, onDelete: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Gerichtname
+                // Dish name
                 Text(
                     text = dish.name,
                     fontSize = 22.sp,
@@ -1004,7 +998,7 @@ fun DishDetailOverlay(dish: Dish, onDismiss: () -> Unit, onDelete: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Schwierigkeit
+                // Difficulty
                 Text(
                     text = "Difficulty: ${dish.difficulty}",
                     fontSize = 16.sp,
@@ -1013,7 +1007,7 @@ fun DishDetailOverlay(dish: Dish, onDismiss: () -> Unit, onDelete: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Geschmack
+                // Taste
                 Text(
                     text = "Taste: ${dish.taste}",
                     fontSize = 16.sp,
@@ -1022,7 +1016,7 @@ fun DishDetailOverlay(dish: Dish, onDismiss: () -> Unit, onDelete: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Anleitung
+                // Instructions
                 Text(
                     text = "Instructions:",
                     fontSize = 18.sp,
@@ -1085,12 +1079,12 @@ fun CookingIdeas (navController: NavHostController) {
             Top_back(navController)
         }
 
-        // Gericht im Zentrum des Bildschirms anzeigen
+        // Align Dish in center
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp), // Padding für bessere Sichtbarkeit
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             randomDish.value?.let { dish ->
@@ -1104,7 +1098,7 @@ fun CookingIdeas (navController: NavHostController) {
             } ?: Text("No Meals displayed yet")
         }
 
-        // Knopf zum Zufälligen Aussuchen am unteren Rand in der Mitte platzieren
+        // Button to show random dish
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -1112,14 +1106,14 @@ fun CookingIdeas (navController: NavHostController) {
             horizontalArrangement = Arrangement.Center
         ) {
             Button(onClick = {
-                randomDish.value = getRandomDish(dishes) // Zustand aktualisieren
-                expandedDish.value = null // Zurücksetzen der erweiterten Ansicht, wenn das Gericht geändert wird
+                randomDish.value = getRandomDish(dishes) // refresh randomDish
+                expandedDish.value = null // Revert to default
             }) {
                 Text("Show random Meal")
             }
         }
 
-        // Detailansicht ohne Löschoption
+        // Details view of random dish without delete button
         expandedDish.value?.let { dish ->
             Box(
                 modifier = Modifier
@@ -1151,27 +1145,27 @@ fun DishDetailView(dish: Dish, onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.5f))
-            .clickable { onDismiss() }, // Schließt das Overlay, wenn der Hintergrund geklickt wird
+            .clickable { onDismiss() }, // closes overlay when clicked outside
         contentAlignment = Alignment.Center
     ) {
-        // Container für den Detailinhalt
+        // Container for Dish Details
         Box(
             modifier = Modifier
-                .wrapContentSize() // Auf die Größe des Inhalts begrenzen
+                .wrapContentSize()
                 .background(Color.White)
                 .clip(RoundedCornerShape(16.dp))
-                .padding(16.dp) // Padding um den Inhalt herum hinzufügen
+                .padding(16.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Container für Schließen- und Löschen-Button
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
                 ) {
-                    // Schließen-Button
+
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
@@ -1182,7 +1176,7 @@ fun DishDetailView(dish: Dish, onDismiss: () -> Unit) {
                     }
                 }
 
-                // Bild
+                // Image
                 val imageRequest = ImageRequest.Builder(LocalContext.current)
                     .data(dish.imageUri)
                     .crossfade(true)
@@ -1205,7 +1199,7 @@ fun DishDetailView(dish: Dish, onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Gerichtname
+                // Name
                 Text(
                     text = dish.name,
                     fontSize = 22.sp,
@@ -1215,7 +1209,7 @@ fun DishDetailView(dish: Dish, onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Schwierigkeit
+                // Difficulty
                 Text(
                     text = "Difficultly: ${dish.difficulty}",
                     fontSize = 16.sp,
@@ -1224,7 +1218,7 @@ fun DishDetailView(dish: Dish, onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Geschmack
+                // Taste
                 Text(
                     text = "Taste: ${dish.taste}",
                     fontSize = 16.sp,
@@ -1233,7 +1227,7 @@ fun DishDetailView(dish: Dish, onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Anleitung
+                // Instructions
                 Text(
                     text = "Instructions:",
                     fontSize = 18.sp,
@@ -1261,14 +1255,14 @@ fun DishDetailView(dish: Dish, onDismiss: () -> Unit) {
 data class Stats(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val username: String ="Current User",
-    val profileUri: String? = null, // Speichere die URI als String
+    val profileUri: String? = null,
     val avgDiff: String = "0",
     val avgTaste: String = "0",
 )
 
 @Dao
 interface StatDao {
-    @Query("SELECT * FROM stats LIMIT 1") // Hole nur einen Datensatz
+    @Query("SELECT * FROM stats LIMIT 1") // Get only one instance
     fun getAllStats(): LiveData<Stats>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -1330,7 +1324,6 @@ class DishViewModel(
         }
     }
 
-    // Funktion zum Abrufen der Anzahl der Gerichte als String
     fun getDishCountAsString(): LiveData<String> {
         return liveData {
             val count = dishDao.getDishCount()
@@ -1343,13 +1336,13 @@ class DishViewModel(
         val avgDiff = dishDao.getAverageDifficulty() ?: 0f
         val avgTaste = dishDao.getAverageTaste() ?: 0f
 
-        // Formatieren der Werte auf zwei Dezimalstellen
+        // Format to 2 decimal places
         val formattedAvgDiff = String.format("%.2f", avgDiff)
         val formattedAvgTaste = String.format("%.2f", avgTaste)
 
         val newStats = Stats(
             id = 1, // assuming only one row
-            username = "Current User", // ggf. dynamisch anpassen
+            username = "Current User",
             profileUri = null,
             avgDiff = formattedAvgDiff,
             avgTaste = formattedAvgTaste
