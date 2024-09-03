@@ -1340,15 +1340,11 @@ class DishViewModel(
         val formattedAvgDiff = String.format("%.2f", avgDiff)
         val formattedAvgTaste = String.format("%.2f", avgTaste)
 
-        val newStats = Stats(
-            id = 1, // assuming only one row
-            username = "Current User",
-            profileUri = null,
-            avgDiff = formattedAvgDiff,
-            avgTaste = formattedAvgTaste
-        )
-
-        statDao.insertStat(newStats)
+        val currentUser = statDao.getUser()
+        if (currentUser != null) {
+            val updatedUser = currentUser.copy(avgDiff = formattedAvgDiff, avgTaste = formattedAvgTaste)
+            statDao.insertStat(updatedUser)
+        }
     }
 
     val _username = mutableStateOf<String?>(null)
