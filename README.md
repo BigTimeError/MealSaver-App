@@ -1,4 +1,4 @@
-# Meal Saver App
+# MealSaver App
 
 ### Summary
 App where you can save meals with all the important infos (taste, difficulty, instructions), so when you don't know what to cook you can look up all the things that you know how to cook
