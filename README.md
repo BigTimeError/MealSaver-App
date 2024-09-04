@@ -6,7 +6,7 @@ App where you can save meals with all the important infos (taste, difficulty, in
 ## Images
 
 <p align="center">
-  <img src="promo_img2.jpg" alt="Main screen" width="300"/>
+  <img src="promo_img1.jpg" alt="Main screen" width="300"/>
   <img src="promo_img2.jpg" alt="Recipes section" width="300"/>
 </p>
 
